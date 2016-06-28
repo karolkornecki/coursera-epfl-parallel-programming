@@ -38,38 +38,63 @@ package object scalashop {
     def update(x: Int, y: Int, c: RGBA): Unit = data(y * width + x) = c
   }
 
+
+  // First version of method implemenation
+
+    /** Computes the blurred RGBA value of a single pixel of the input image. */
+    def boxBlurKernel1(src: Img, x: Int, y: Int, radius: Int): RGBA = {
+
+      // TODO I should implement it in more functional and concise way :-)
+
+      var redSet = Set[RGBA]()
+      var greenSet = Set[RGBA]()
+      var blueSet = Set[RGBA]()
+      var alphaSet = Set[RGBA]()
+
+      var startY = y - radius
+      while (startY <= y + radius) {
+        var startX = x - radius
+        while (startX <= x + radius) {
+          val pixelY = clamp(startY, 0, src.height - 1)
+          val pixelX = clamp(startX, 0, src.width - 1)
+
+          redSet += red(src(pixelX, pixelY))
+          greenSet += green(src(pixelX, pixelY))
+          blueSet += blue(src(pixelX, pixelY))
+          alphaSet += alpha(src(pixelX, pixelY))
+
+          startX = startX + 1
+        }
+        startY = startY + 1
+      }
+
+      rgba(
+        redSet.seq.sum / redSet.size,
+        greenSet.seq.sum / greenSet.size,
+        blueSet.seq.sum / blueSet.size,
+        alphaSet.seq.sum / alphaSet.size
+      )
+    }
+
+  // Second version more functional :-)
+
   /** Computes the blurred RGBA value of a single pixel of the input image. */
   def boxBlurKernel(src: Img, x: Int, y: Int, radius: Int): RGBA = {
 
-    // TODO I should implement it in more functional and concise way :-)
-
-    var redSet = Set[RGBA]()
-    var greenSet = Set[RGBA]()
-    var blueSet = Set[RGBA]()
-    var alphaSet = Set[RGBA]()
-
-    var startY = y - radius
-    while (startY <= y + radius) {
-      var startX = x - radius
-      while (startX <= x + radius) {
-        val pixelY = clamp(startY, 0, src.height - 1)
-        val pixelX = clamp(startX, 0, src.width - 1)
-
-        redSet += red(src(pixelX, pixelY))
-        greenSet += green(src(pixelX, pixelY))
-        blueSet += blue(src(pixelX, pixelY))
-        alphaSet += alpha(src(pixelX, pixelY))
-
-        startX = startX + 1
-      }
-      startY = startY + 1
-    }
+    val tuples = (-radius to radius)
+      .flatMap(i => (-radius to radius).map(j => (clamp(x + i, 0, src.width - 1), clamp(y + j, 0, src.height - 1))))
+      .distinct
+      .map({
+        case (x, y) =>
+          val pixel = src(x, y)
+          (red(pixel), green(pixel), blue(pixel), alpha(pixel))
+      })
 
     rgba(
-      redSet.seq.sum / redSet.size,
-      greenSet.seq.sum / greenSet.size,
-      blueSet.seq.sum / blueSet.size,
-      alphaSet.seq.sum / alphaSet.size
+      tuples.map(_._1).sum / tuples.length,
+      tuples.map(_._2).sum / tuples.length,
+      tuples.map(_._3).sum / tuples.length,
+      tuples.map(_._4).sum / tuples.length
     )
   }
 
