@@ -36,22 +36,6 @@ object HorizontalBoxBlurRunner {
 /** A simple, trivially parallelizable computation. */
 object HorizontalBoxBlur {
 
-  /** Blurs the rows of the source image `src` into the destination image `dst`,
-    * starting with `from` and ending with `end` (non-inclusive).
-    *
-    * Within each row, `blur` traverses the pixels by going from left to right.
-    */
-  def blur(src: Img, dst: Img, from: Int, end: Int, radius: Int): Unit = {
-    // TODO implement this method using the `boxBlurKernel` method
-    for (x <- 0 until src.width) {
-      for (y <- from until end) {
-        if (y >= 0 && y < src.height) {
-          dst.update(x, y, boxBlurKernel(src, x, y, radius))
-        }
-      }
-    }
-  }
-
   /** Blurs the rows of the source image in parallel using `numTasks` tasks.
     *
     * Parallelization is done by stripping the source image `src` into
@@ -59,18 +43,31 @@ object HorizontalBoxBlur {
     * rows.
     */
   def parBlur(src: Img, dst: Img, numTasks: Int, radius: Int): Unit = {
-    // TODO implement using the `task` construct and the `blur` method
-
-    val rowsPerTask: Int = Math.max(src.height / numTasks, 1)
-    val indexes = Range(0, src.height) by rowsPerTask
-
-    val tasks = indexes.map(t => {
+    val rows: Int = Math.max(src.height / numTasks, 1)
+    val indexes = Range(0, src.height) by rows
+    val tuples = indexes zip indexes.map(i => i + rows)
+    val tasks = tuples.map(t => {
       task {
-        blur(src, dst, t, t + rowsPerTask, radius)
+        blur(src, dst, t._1, t._2, radius)
       }
     })
 
     tasks.foreach(t => t.join())
+  }
+
+  /** Blurs the rows of the source image `src` into the destination image `dst`,
+    * starting with `from` and ending with `end` (non-inclusive).
+    *
+    * Within each row, `blur` traverses the pixels by going from left to right.
+    */
+  def blur(src: Img, dst: Img, from: Int, end: Int, radius: Int): Unit = {
+    for (x <- 0 until src.width) {
+      for (y <- from until end) {
+        if (y >= 0 && y < src.height) {
+          dst.update(x, y, boxBlurKernel(src, x, y, radius))
+        }
+      }
+    }
   }
 
 }
